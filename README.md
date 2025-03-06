@@ -1,66 +1,195 @@
-# Personal Research Assistant for PDFs (RAG-Powered)
+# 📚 PDF Research Assistant (RAG-Powered)
 
-A powerful AI-powered research assistant that can analyze multiple PDFs, extract information, and answer queries using Retrieval-Augmented Generation (RAG).
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Python](https://img.shields.io/badge/python-3.10+-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.28.0-red)
+![LangChain](https://img.shields.io/badge/LangChain-0.0.335-orange)
 
-## Features
+A powerful AI-powered research assistant that analyzes multiple PDFs, extracts information, and answers queries using Retrieval-Augmented Generation (RAG). Unlike regular ChatPDF apps, this system supports multi-document knowledge retrieval, context-aware responses, and both local and API-based LLM execution.
 
-- **Multi-PDF Upload**: Upload multiple research papers, legal documents, or books
-- **Advanced Chunking**: Uses NLP-based chunking instead of naive fixed-length chunks
-- **RAG-Powered Retrieval**: Retrieves the most relevant text and augments LLM responses
-- **Local & API-Based LLMs**: Works with both local models (Llama 2, Mistral 7B) and API-based models
-- **Hybrid Search**: Combines embeddings and BM25 for improved retrieval accuracy
-- **Citation Tracking**: Shows source references for extracted answers
-- **Scalability**: Can process hundreds of PDFs efficiently
-- **Simple Web UI**: User-friendly Streamlit-based frontend
+## ✨ Features
 
-## Setup and Installation
+- **📄 Multi-PDF Upload**: Process multiple research papers, legal documents, or books simultaneously
+- **🧠 Advanced Chunking**: Uses NLP-based chunking with configurable parameters instead of naive fixed-length chunks
+- **🔍 RAG-Powered Retrieval**: Retrieves the most relevant text and augments LLM responses for accurate answers
+- **🤖 Flexible LLM Support**: Works with both local models (via Ollama) and API-based models (OpenAI)
+- **🔎 Hybrid Search**: Combines vector embeddings and BM25 for superior retrieval accuracy
+- **📝 Citation Tracking**: Shows source references for extracted answers with page numbers
+- **📊 Document Management**: Organize, delete, and summarize your uploaded documents
+- **📱 Modern UI**: User-friendly Streamlit-based frontend with tabs and responsive design
+- **🚀 Scalability**: Efficiently processes hundreds of PDFs with optimized memory usage
+
+## 🛠️ Technology Stack
+
+### Backend
+- **FastAPI**: High-performance API framework for the backend server
+- **LangChain**: Framework for building RAG pipelines and LLM interactions
+- **PyMuPDF & PDFPlumber**: PDF parsing and text extraction
+- **Sentence Transformers**: Text embedding generation for semantic search
+- **ChromaDB & FAISS**: Vector database for efficient similarity search
+- **BM25**: Statistical retrieval function for keyword-based search
+- **Ollama**: Interface for running local LLMs (Mistral, Llama, etc.)
+- **OpenAI API**: Optional integration for cloud-based LLMs
+
+### Frontend
+- **Streamlit**: Interactive web interface with minimal code
+- **Pandas**: Data manipulation for document management
+- **Custom CSS**: Enhanced styling for better user experience
+
+### Core Components
+- **Hybrid Search Engine**: Combines semantic (vector) and lexical (BM25) search
+- **Document Processor**: Intelligent chunking and metadata extraction
+- **RAG Pipeline**: Retrieves relevant context and generates accurate answers
+- **Citation System**: Tracks source documents and page numbers
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Python 3.10+
+- [Ollama](https://ollama.ai/) (for local LLM support)
+
+### Installation
 
 1. Clone this repository
-2. Install dependencies:
+   ```bash
+   git clone https://github.com/yourusername/pdf-research-assistant.git
+   cd pdf-research-assistant
    ```
+
+2. Install dependencies
+   ```bash
    pip install -r requirements.txt
    ```
-3. For local LLM support, install [Ollama](https://ollama.ai/) and download a model:
-   ```
+
+3. For local LLM support, install Ollama and download a model
+   ```bash
+   # Install Ollama from https://ollama.ai/
    ollama pull mistral
    ```
 
-## Usage
+### Configuration
 
-1. Start the backend server:
+Edit the `.env` file to configure:
+- LLM settings (local or API-based)
+- Vector database path
+- Hybrid search weights
+- Other parameters
+
+```
+# API Keys
+OPENAI_API_KEY=your_api_key_here  # Optional
+
+# LLM Settings
+USE_LOCAL_LLM=true
+DEFAULT_LLM_MODEL=mistral
+
+# Vector DB Settings
+VECTOR_DB_PATH=./models/chroma_db
+
+# Hybrid Search Settings
+USE_HYBRID_SEARCH=true
+BM25_WEIGHT=0.3
+VECTOR_WEIGHT=0.7
+```
+
+### Running the Application
+
+1. Start the application (backend and frontend)
+   ```bash
+   python run.py
    ```
+
+2. Or start components separately
+   ```bash
+   # Terminal 1 - Backend
    cd backend
-   uvicorn main:app --reload
-   ```
+   uvicorn main:app --reload --port 8002
 
-2. Start the Streamlit frontend:
-   ```
+   # Terminal 2 - Frontend
    cd frontend
    streamlit run app.py
    ```
 
 3. Open your browser and navigate to http://localhost:8501
 
-## Project Structure
+## 📋 Usage Guide
+
+### Uploading Documents
+1. Use the sidebar to upload one or more PDF files
+2. Configure advanced chunking options if needed
+3. Click "Process Documents" to start extraction and indexing
+
+### Asking Questions
+1. Type your question in the text area
+2. Click "Ask" to generate an answer
+3. View the answer along with citations and source passages
+
+### Managing Documents
+1. Navigate to the "Document Management" tab
+2. View, delete, or generate summaries of your documents
+
+### Customizing Settings
+1. Navigate to the "Settings" tab
+2. Configure LLM options, chunking parameters, and search settings
+
+## 🏗️ Project Structure
 
 ```
-📂 research-assistant
+📂 pdf-research-assistant
 ├── 📁 backend
-│   ├── main.py  # FastAPI server
-│   ├── process_pdf.py  # PDF extraction & chunking
-│   ├── embed_store.py  # Vector DB handling (ChromaDB/FAISS)
-│   ├── query_handler.py  # RAG retrieval & LLM response
-│   ├── config.py  # Configuration settings
+│   ├── main.py              # FastAPI server
+│   ├── process_pdf.py       # PDF extraction & chunking
+│   ├── embed_store.py       # Vector DB handling
+│   ├── query_handler.py     # RAG retrieval & LLM response
+│   ├── config.py            # Configuration settings
 ├── 📁 frontend
-│   ├── app.py  # Streamlit UI
-├── 📁 models
-│   ├── embeddings.pkl  # Precomputed embeddings
-├── 📁 data
-│   ├── sample_papers.pdf
-├── requirements.txt  # Dependencies
-├── README.md  # Project documentation
+│   ├── app.py               # Streamlit UI
+├── 📁 models                # Storage for embeddings and vector DB
+├── 📁 data                  # Sample and uploaded PDFs
+├── 📁 tools                 # Utility scripts
+├── requirements.txt         # Dependencies
+├── .env                     # Environment variables
+├── run.py                   # Combined runner script
+└── README.md                # Documentation
 ```
 
-## License
+## 🔧 Advanced Configuration
 
-MIT 
+### Chunking Strategy
+The system uses LangChain's RecursiveCharacterTextSplitter for intelligent document chunking. You can configure:
+- Chunk size (default: 1000 characters)
+- Chunk overlap (default: 200 characters)
+- Custom separators for domain-specific documents
+
+### Hybrid Search
+The system combines vector similarity and BM25 keyword matching:
+- Vector weight: Controls the importance of semantic similarity (default: 0.7)
+- BM25 weight: Controls the importance of keyword matching (default: 0.3)
+
+### LLM Selection
+- Local models via Ollama: Mistral, Llama2, etc.
+- API-based models: OpenAI's GPT models (requires API key)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgements
+
+- [LangChain](https://github.com/langchain-ai/langchain) for the RAG framework
+- [Sentence Transformers](https://github.com/UKPLab/sentence-transformers) for embeddings
+- [ChromaDB](https://github.com/chroma-core/chroma) for vector storage
+- [FastAPI](https://fastapi.tiangolo.com/) for the backend framework
+- [Streamlit](https://streamlit.io/) for the frontend framework
+- [Ollama](https://ollama.ai/) for local LLM support 

@@ -113,6 +113,8 @@ st.markdown("""
         border-radius: 4px 4px 0 0;
         padding: 10px 20px;
         border: none;
+        color: black !important;
+        font-weight: bold !important;
     }
     .stTabs [aria-selected="true"] {
         background-color: #4CAF50 !important;
@@ -147,6 +149,28 @@ st.markdown("""
     /* Fix for question text area */
     .stTextArea textarea {
         color: #666 !important;
+    }
+    /* Make tab content text visible */
+    .stTabs [role="tabpanel"] {
+        color: white !important;
+    }
+    /* Make all text in Document Management, Summaries, and Settings tabs visible */
+    .stTabs [role="tabpanel"] p,
+    .stTabs [role="tabpanel"] span,
+    .stTabs [role="tabpanel"] div,
+    .stTabs [role="tabpanel"] label {
+        color: white !important;
+    }
+    /* Make dataframe text black for better visibility */
+    .stDataFrame {
+        color: black !important;
+    }
+    .stDataFrame th {
+        color: black !important;
+        font-weight: bold !important;
+    }
+    .stDataFrame td {
+        color: black !important;
     }
 </style>
 """, unsafe_allow_html=True)
