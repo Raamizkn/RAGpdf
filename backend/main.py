@@ -45,9 +45,35 @@ class ProcessingStatus(BaseModel):
     message: str
     document_count: int
 
+class DocumentRequest(BaseModel):
+    filename: str
+
+class DocumentListResponse(BaseModel):
+    documents: List[Dict[str, Any]]
+
+class SummaryRequest(BaseModel):
+    document_id: Optional[str] = None
+    filename: Optional[str] = None
+
+class SummaryResponse(BaseModel):
+    summary: str
+    document_id: Optional[str]
+    title: Optional[str]
+
+class ChunkingConfig(BaseModel):
+    chunk_size: int
+    chunk_overlap: int
+
 # Background task for processing PDFs
-def process_pdfs_task(file_paths: List[str], use_pdfplumber: bool = False):
+def process_pdfs_task(file_paths: List[str], use_pdfplumber: bool = False, 
+                      chunk_size: Optional[int] = None, chunk_overlap: Optional[int] = None):
     try:
+        # Update chunking parameters if provided
+        if chunk_size is not None:
+            pdf_processor.text_splitter.chunk_size = chunk_size
+        if chunk_overlap is not None:
+            pdf_processor.text_splitter.chunk_overlap = chunk_overlap
+            
         # Process PDFs
         chunks = pdf_processor.process_multiple_pdfs(file_paths, use_pdfplumber)
         
@@ -68,7 +94,9 @@ def process_pdfs_task(file_paths: List[str], use_pdfplumber: bool = False):
 async def upload_pdfs(
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
-    use_pdfplumber: bool = Form(False)
+    use_pdfplumber: bool = Form(False),
+    chunk_size: Optional[int] = Form(None),
+    chunk_overlap: Optional[int] = Form(None)
 ):
     """Upload and process multiple PDF files"""
     if not files:
@@ -90,7 +118,13 @@ async def upload_pdfs(
         raise HTTPException(status_code=400, detail="No valid PDF files provided")
     
     # Process PDFs in background
-    background_tasks.add_task(process_pdfs_task, temp_file_paths, use_pdfplumber)
+    background_tasks.add_task(
+        process_pdfs_task, 
+        temp_file_paths, 
+        use_pdfplumber,
+        chunk_size,
+        chunk_overlap
+    )
     
     return {
         "status": "processing",
@@ -115,6 +149,49 @@ async def ask_question(request: QuestionRequest):
     # Answer the question
     result = query_handler.answer_question(request.question, request.top_k)
     return result
+
+@app.get("/documents", response_model=DocumentListResponse)
+async def get_documents():
+    """Get a list of all documents"""
+    documents = embedding_store.get_document_list()
+    return {"documents": documents}
+
+@app.delete("/documents/{filename}")
+async def delete_document(filename: str):
+    """Delete a document and all its chunks"""
+    success = embedding_store.delete_document(filename)
+    if success:
+        # Save state after deletion
+        embedding_store.save_state()
+        return {"status": "success", "message": f"Document {filename} deleted successfully"}
+    else:
+        raise HTTPException(status_code=404, detail=f"Document {filename} not found")
+
+@app.post("/summarize", response_model=SummaryResponse)
+async def summarize_document(request: SummaryRequest):
+    """Generate a summary for a document"""
+    if not request.document_id and not request.filename:
+        raise HTTPException(status_code=400, detail="Either document_id or filename must be provided")
+    
+    result = query_handler.summarize_document(request.document_id, request.filename)
+    
+    if not result["document_id"] and not result["title"]:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    return result
+
+@app.post("/chunking-config")
+async def update_chunking_config(config: ChunkingConfig):
+    """Update the chunking configuration"""
+    pdf_processor.text_splitter.chunk_size = config.chunk_size
+    pdf_processor.text_splitter.chunk_overlap = config.chunk_overlap
+    
+    return {
+        "status": "success", 
+        "message": "Chunking configuration updated",
+        "chunk_size": config.chunk_size,
+        "chunk_overlap": config.chunk_overlap
+    }
 
 @app.get("/status", response_model=ProcessingStatus)
 async def get_status():

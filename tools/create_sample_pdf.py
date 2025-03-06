@@ -7,12 +7,19 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 
-from backend import config
+try:
+    from backend import config
+    DATA_DIR = config.DATA_DIR
+except (ImportError, AttributeError):
+    # Fallback to hardcoded values if import fails
+    DATA_DIR = os.path.join(parent_dir, "data")
+    # Create directory if it doesn't exist
+    os.makedirs(DATA_DIR, exist_ok=True)
 
 def create_sample_pdf():
     """Create a sample PDF from the sample text file"""
     # Check if sample text file exists
-    sample_txt = os.path.join(config.DATA_DIR, "sample.txt")
+    sample_txt = os.path.join(DATA_DIR, "sample.txt")
     if not os.path.exists(sample_txt):
         print(f"Sample text file not found at {sample_txt}")
         return
@@ -64,13 +71,13 @@ def create_sample_pdf():
             pdf.ln(2)
     
     # Save the PDF
-    output_path = os.path.join(config.DATA_DIR, "sample.pdf")
+    output_path = os.path.join(DATA_DIR, "sample.pdf")
     pdf.output(output_path)
     print(f"Sample PDF created at {output_path}")
 
 if __name__ == "__main__":
     # Create directory if it doesn't exist
-    os.makedirs(config.DATA_DIR, exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
     
     # Create sample PDF
     create_sample_pdf() 

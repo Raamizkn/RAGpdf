@@ -25,6 +25,19 @@ Question: {question}
 
 Answer:"""
         )
+        
+        # Define the summarization prompt template
+        self.summary_template = PromptTemplate(
+            input_variables=["document_content"],
+            template="""You are a helpful research assistant. Please provide a concise summary of the following document. 
+Focus on the main topics, key findings, and important concepts. The summary should be informative and highlight the most 
+important aspects of the document.
+
+Document:
+{document_content}
+
+Summary:"""
+        )
     
     def format_context(self, retrieved_docs: List[Dict]) -> Tuple[str, List[Dict]]:
         """Format retrieved documents into context string and citation info"""
@@ -134,6 +147,52 @@ Answer:"""
             "answer": answer,
             "citations": citations,
             "retrieved_docs": retrieved_docs if config.SHOW_CITATIONS else []
+        }
+    
+    def summarize_document(self, document_id: str = None, filename: str = None) -> Dict[str, Any]:
+        """Generate a summary for a document"""
+        # Get all chunks for the document
+        if document_id:
+            # In a real implementation, we would query the database for all chunks with this document_id
+            # For now, we'll use a mock approach
+            document_chunks = self.embedding_store.get_document_chunks(document_id)
+        elif filename:
+            # Get chunks by filename
+            document_chunks = self.embedding_store.get_document_chunks_by_filename(filename)
+        else:
+            return {
+                "summary": "Error: No document ID or filename provided.",
+                "document_id": None,
+                "title": None
+            }
+        
+        if not document_chunks:
+            return {
+                "summary": "No document found with the provided ID or filename.",
+                "document_id": document_id,
+                "title": filename
+            }
+        
+        # Concatenate all chunks
+        document_content = "\n\n".join([chunk["text"] for chunk in document_chunks])
+        
+        # Get metadata from the first chunk
+        metadata = document_chunks[0]["metadata"]
+        title = metadata.get("title", metadata.get("filename", "Unknown"))
+        
+        # Generate prompt
+        prompt = self.summary_template.format(document_content=document_content)
+        
+        # Get LLM response
+        if config.USE_LOCAL_LLM:
+            summary = self.query_local_llm(prompt)
+        else:
+            summary = self.query_openai(prompt)
+        
+        return {
+            "summary": summary,
+            "document_id": document_id or document_chunks[0]["id"],
+            "title": title
         }
 
 

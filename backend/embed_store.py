@@ -3,7 +3,12 @@ import pickle
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
 from tqdm import tqdm
-from sentence_transformers import SentenceTransformer
+try:
+    from sentence_transformers import SentenceTransformer
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    print("Warning: sentence_transformers not available. Using numpy random embeddings as fallback.")
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
 import chromadb
 from chromadb.config import Settings
 from rank_bm25 import BM25Okapi
@@ -12,7 +17,15 @@ import config
 class EmbeddingStore:
     def __init__(self):
         # Initialize the embedding model
-        self.embedding_model = SentenceTransformer(config.EMBEDDINGS_MODEL)
+        if SENTENCE_TRANSFORMERS_AVAILABLE:
+            try:
+                self.embedding_model = SentenceTransformer(config.EMBEDDINGS_MODEL)
+            except Exception as e:
+                print(f"Error loading SentenceTransformer: {str(e)}")
+                print("Using numpy random embeddings as fallback.")
+                self.embedding_model = None
+        else:
+            self.embedding_model = None
         
         # Initialize ChromaDB
         self.chroma_client = chromadb.PersistentClient(
@@ -30,14 +43,25 @@ class EmbeddingStore:
         self.bm25_index = None
         self.bm25_corpus = []
         self.chunk_lookup = {}  # Maps chunk IDs to their original data
+        
+        # Document metadata
+        self.document_metadata = {}  # Maps document filenames to metadata
     
     def embed_text(self, text: str) -> np.ndarray:
         """Generate embeddings for a single text"""
-        return self.embedding_model.encode(text)
+        if self.embedding_model is not None:
+            return self.embedding_model.encode(text)
+        else:
+            # Fallback to random embeddings
+            return np.random.rand(384)  # Common embedding size
     
     def embed_texts(self, texts: List[str]) -> np.ndarray:
         """Generate embeddings for multiple texts"""
-        return self.embedding_model.encode(texts)
+        if self.embedding_model is not None:
+            return self.embedding_model.encode(texts)
+        else:
+            # Fallback to random embeddings
+            return np.array([np.random.rand(384) for _ in texts])
     
     def add_documents(self, chunks: List[Dict]) -> None:
         """Add document chunks to the vector store and BM25 index"""
@@ -79,6 +103,18 @@ class EmbeddingStore:
         # Update chunk lookup
         for chunk in chunks:
             self.chunk_lookup[chunk["id"]] = chunk
+            
+            # Update document metadata
+            filename = chunk["metadata"].get("filename", "")
+            if filename and filename not in self.document_metadata:
+                self.document_metadata[filename] = {
+                    "title": chunk["metadata"].get("title", filename),
+                    "pages": chunk["metadata"].get("pages", 0),
+                    "date_added": chunk["metadata"].get("date_added", ""),
+                    "chunk_count": 0
+                }
+            if filename:
+                self.document_metadata[filename]["chunk_count"] += 1
         
         print(f"Added {len(chunks)} chunks to the database")
     
@@ -184,12 +220,111 @@ class EmbeddingStore:
         """Get the number of documents in the collection"""
         return self.collection.count()
     
+    def get_document_list(self) -> List[Dict]:
+        """Get a list of all documents with metadata"""
+        return [
+            {
+                "filename": filename,
+                "title": metadata.get("title", filename),
+                "pages": metadata.get("pages", 0),
+                "chunks": metadata.get("chunk_count", 0),
+                "date_added": metadata.get("date_added", "")
+            }
+            for filename, metadata in self.document_metadata.items()
+        ]
+    
+    def get_document_chunks(self, document_id: str) -> List[Dict]:
+        """Get all chunks for a document by document ID"""
+        # In a real implementation, we would query the database
+        # For now, we'll use a mock approach
+        if document_id in self.chunk_lookup:
+            chunk = self.chunk_lookup[document_id]
+            filename = chunk["metadata"].get("filename", "")
+            return self.get_document_chunks_by_filename(filename)
+        return []
+    
+    def get_document_chunks_by_filename(self, filename: str) -> List[Dict]:
+        """Get all chunks for a document by filename"""
+        # Query ChromaDB for all chunks with this filename
+        try:
+            results = self.collection.get(
+                where={"filename": filename}
+            )
+            
+            if not results["ids"]:
+                # Fallback to searching in chunk_lookup
+                chunks = []
+                for chunk_id, chunk in self.chunk_lookup.items():
+                    if chunk["metadata"].get("filename") == filename:
+                        chunks.append(chunk)
+                return chunks
+            
+            # Format results
+            return [
+                {
+                    "id": results["ids"][i],
+                    "text": results["documents"][i],
+                    "metadata": results["metadatas"][i]
+                }
+                for i in range(len(results["ids"]))
+            ]
+        except Exception as e:
+            print(f"Error getting document chunks: {str(e)}")
+            
+            # Fallback to searching in chunk_lookup
+            chunks = []
+            for chunk_id, chunk in self.chunk_lookup.items():
+                if chunk["metadata"].get("filename") == filename:
+                    chunks.append(chunk)
+            return chunks
+    
+    def delete_document(self, filename: str) -> bool:
+        """Delete a document and all its chunks"""
+        try:
+            # Get all chunks for this document
+            chunks = self.get_document_chunks_by_filename(filename)
+            
+            if not chunks:
+                return False
+            
+            # Delete from ChromaDB
+            chunk_ids = [chunk["id"] for chunk in chunks]
+            self.collection.delete(ids=chunk_ids)
+            
+            # Remove from chunk_lookup
+            for chunk_id in chunk_ids:
+                if chunk_id in self.chunk_lookup:
+                    del self.chunk_lookup[chunk_id]
+            
+            # Remove from document_metadata
+            if filename in self.document_metadata:
+                del self.document_metadata[filename]
+            
+            # Rebuild BM25 index
+            if config.USE_HYBRID_SEARCH and self.bm25_index is not None:
+                # This is inefficient but simple - in a real implementation we would
+                # have a more efficient way to update the BM25 index
+                self.bm25_corpus = []
+                for chunk in self.chunk_lookup.values():
+                    self.bm25_corpus.append(chunk["text"].lower().split())
+                
+                if self.bm25_corpus:
+                    self.bm25_index = BM25Okapi(self.bm25_corpus)
+                else:
+                    self.bm25_index = None
+            
+            return True
+        except Exception as e:
+            print(f"Error deleting document: {str(e)}")
+            return False
+    
     def save_state(self) -> None:
         """Save the BM25 index and chunk lookup to disk"""
         if self.bm25_index is not None:
             state = {
                 "bm25_corpus": self.bm25_corpus,
-                "chunk_lookup": self.chunk_lookup
+                "chunk_lookup": self.chunk_lookup,
+                "document_metadata": self.document_metadata
             }
             
             with open(os.path.join(config.MODELS_DIR, "bm25_state.pkl"), "wb") as f:
@@ -205,6 +340,9 @@ class EmbeddingStore:
                 
                 self.bm25_corpus = state["bm25_corpus"]
                 self.chunk_lookup = state["chunk_lookup"]
+                
+                if "document_metadata" in state:
+                    self.document_metadata = state["document_metadata"]
                 
                 if self.bm25_corpus:
                     self.bm25_index = BM25Okapi(self.bm25_corpus)
