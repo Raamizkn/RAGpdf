@@ -11,6 +11,10 @@ class QueryHandler:
     def __init__(self, embedding_store: EmbeddingStore):
         self.embedding_store = embedding_store
         
+        # Configure Ollama client for Docker
+        if hasattr(config, 'OLLAMA_URL'):
+            ollama.host = config.OLLAMA_URL
+        
         # Define the RAG prompt template
         self.rag_template = PromptTemplate(
             input_variables=["context", "question"],

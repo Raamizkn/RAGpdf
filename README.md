@@ -5,6 +5,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.28.0-red)
 ![LangChain](https://img.shields.io/badge/LangChain-0.0.335-orange)
+![Docker](https://img.shields.io/badge/Docker-Ready-blue)
 
 A powerful AI-powered research assistant that analyzes multiple PDFs, extracts information, and answers queries using Retrieval-Augmented Generation (RAG). Unlike regular ChatPDF apps, this system supports multi-document knowledge retrieval, context-aware responses, and both local and API-based LLM execution.
 
@@ -19,6 +20,7 @@ A powerful AI-powered research assistant that analyzes multiple PDFs, extracts i
 - **📊 Document Management**: Organize, delete, and summarize your uploaded documents
 - **📱 Modern UI**: User-friendly Streamlit-based frontend with tabs and responsive design
 - **🚀 Scalability**: Efficiently processes hundreds of PDFs with optimized memory usage
+- **🐳 Docker Support**: Easy deployment with Docker and Docker Compose
 
 ## 🛠️ Technology Stack
 
@@ -37,19 +39,19 @@ A powerful AI-powered research assistant that analyzes multiple PDFs, extracts i
 - **Pandas**: Data manipulation for document management
 - **Custom CSS**: Enhanced styling for better user experience
 
-### Core Components
-- **Hybrid Search Engine**: Combines semantic (vector) and lexical (BM25) search
-- **Document Processor**: Intelligent chunking and metadata extraction
-- **RAG Pipeline**: Retrieves relevant context and generates accurate answers
-- **Citation System**: Tracks source documents and page numbers
+### Deployment
+- **Docker**: Containerization for easy deployment
+- **Docker Compose**: Multi-container orchestration
+- **Cloud Ready**: Deployable to AWS, GCP, Azure, and other cloud platforms
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 - Python 3.10+
 - [Ollama](https://ollama.ai/) (for local LLM support)
+- Docker and Docker Compose (for containerized deployment)
 
-### Installation
+### Standard Installation
 
 1. Clone this repository
    ```bash
@@ -67,6 +69,25 @@ A powerful AI-powered research assistant that analyzes multiple PDFs, extracts i
    # Install Ollama from https://ollama.ai/
    ollama pull mistral
    ```
+
+### Docker Installation
+
+1. Clone this repository
+   ```bash
+   git clone https://github.com/yourusername/pdf-research-assistant.git
+   cd pdf-research-assistant
+   ```
+
+2. Build and start the containers
+   ```bash
+   docker-compose up -d
+   ```
+
+3. Access the application
+   - Frontend: http://localhost:8501
+   - Backend API: http://localhost:8002
+
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### Configuration
 
@@ -148,6 +169,8 @@ VECTOR_WEIGHT=0.7
 ├── 📁 models                # Storage for embeddings and vector DB
 ├── 📁 data                  # Sample and uploaded PDFs
 ├── 📁 tools                 # Utility scripts
+├── Dockerfile               # Docker container definition
+├── docker-compose.yml       # Multi-container orchestration
 ├── requirements.txt         # Dependencies
 ├── .env                     # Environment variables
 ├── run.py                   # Combined runner script

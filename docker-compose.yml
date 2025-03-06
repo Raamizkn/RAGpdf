@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  pdf-research-assistant:
+    build: .
+    container_name: pdf-research-assistant
+    ports:
+      - "8501:8501"  # Streamlit frontend
+      - "8002:8002"  # FastAPI backend
+    volumes:
+      - ./data:/app/data  # Mount data directory for persistence
+      - ./models:/app/models  # Mount models directory for persistence
+    environment:
+      - USE_LOCAL_LLM=false  # Set to false when running in container
+    restart: unless-stopped
+    networks:
+      - pdf-assistant-network
+
+  # Optional: Add Ollama service for local LLM support
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - pdf-assistant-network
+
+networks:
+  pdf-assistant-network:
+    driver: bridge
+
+volumes:
+  ollama_data:
+    driver: local 
