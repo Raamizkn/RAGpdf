@@ -3,8 +3,11 @@ import sys
 from fpdf import FPDF
 
 # Add parent directory to path to import config
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import config
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
+
+from backend import config
 
 def create_sample_pdf():
     """Create a sample PDF from the sample text file"""
@@ -50,7 +53,7 @@ def create_sample_pdf():
         # Handle list items
         elif line.startswith("- ") or line.startswith("* "):
             pdf.set_font("Arial", "", 12)
-            pdf.cell(0, 10, "  • " + line[2:], ln=True)
+            pdf.cell(0, 10, "  - " + line[2:], ln=True)
         elif line.startswith("1. ") or line.startswith("2. ") or line.startswith("3. "):
             pdf.set_font("Arial", "", 12)
             pdf.cell(0, 10, "  " + line, ln=True)
